@@ -23,9 +23,9 @@ def json_serializer(obj):
   return str(obj)
 
 def j(v):
-    return json.dumps(v, default=json_serializer) if v is not None else None
+  return json.dumps(v, default=json_serializer) if v is not None else None
 
-def normalize(v):
+def norm(v):
   if isinstance(v, ObjectId):
     return str(v)
 
@@ -85,25 +85,25 @@ for doc in collection.find({
 }):
   try:
     values = (
-      normalize(doc["_id"]),
+      norm(doc["_id"]),
       j(doc.get("reward_catalog")),
       j(doc.get("eligibility")),
       j(doc.get("bonus")),
       j(doc.get("notification")),
-      normalize(doc.get("keyword_approval")),
-      normalize(doc.get("is_draft")),
-      normalize(doc.get("need_review_after_edit")),
+      norm(doc.get("keyword_approval")),
+      norm(doc.get("is_draft")),
+      norm(doc.get("need_review_after_edit")),
       j(doc.get("created_by")),
-      normalize(doc.get("hq_approver")),
-      normalize(doc.get("non_hq_approver")),
-      normalize(doc.get("is_main_keyword")),
+      norm(doc.get("hq_approver")),
+      norm(doc.get("non_hq_approver")),
+      norm(doc.get("is_main_keyword")),
       j(doc.get("child_keyword")),
-      normalize(doc.get("keyword_edit")),
-      normalize(doc.get("is_stoped")),
-      normalize(doc.get("remark")),
-      normalize(doc.get("created_at")),
-      normalize(doc.get("updated_at")),
-      normalize(doc.get("deleted_at")),
+      norm(doc.get("keyword_edit")),
+      norm(doc.get("is_stoped")),
+      norm(doc.get("remark")),
+      norm(doc.get("created_at")),
+      norm(doc.get("updated_at")),
+      norm(doc.get("deleted_at")),
     )
 
     cursor.execute(query, values)
