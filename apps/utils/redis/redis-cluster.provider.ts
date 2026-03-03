@@ -1,6 +1,11 @@
 import { ConfigService } from '@nestjs/config';
 import { Cluster } from 'ioredis';
 
+// new package?
+import KeyvRedis from '@keyv/redis';
+import { Keyv } from 'keyv';
+// import { createCache } from 'cache-manager';
+
 function getClusterConfig(configService: ConfigService) {
   return {
     nodes:
@@ -18,34 +23,31 @@ function getClusterConfig(configService: ConfigService) {
   };
 }
 
-function redisClusterStore(redis: Cluster) {
-  return {
-    async get(key: string) {
-      const val = await redis.get(key);
-      return val ? JSON.parse(val) : null;
-    },
-    async set(key: string, value: any, option?: any) {
-      const data = JSON.stringify(value);
-      if (option?.ttl) {
-        await redis.set(key, data, 'EX', option.ttl);
-      } else {
-        await redis.set(key, data);
-      }
-    },
-    async del(key: string) {
-      await redis.del(key);
-    },
-  };
-}
-
 export function createGeneralRedisCluster(
   configService: ConfigService,
-): Cluster | object {
+): object | Cluster {
   const { nodes, username, password } = getClusterConfig(configService);
   console.log(
     `[RedisCluster General] nodes=${nodes}, username=${username}, password=${password}`,
   );
 
+  // 1 node only
+  const firstNode = nodes.split(',')[0];
+  const redisUri = `redis://${username}:${password}@${firstNode}`;
+  const keyv = new Keyv({
+    namespace: 'nestjs-cache',
+    store: new KeyvRedis(redisUri),
+    ttl: 24 * 60 * 60 * 1000,
+  });
+
+  console.log(`[RedisCluster General] Config: ${JSON.stringify(keyv)}`);
+
+  return {
+    isGlobal: true,
+    stores: [keyv],
+  };
+
+  /*
   let clusterNodes: any = [];
   if (nodes.length) {
     try {
@@ -66,7 +68,7 @@ export function createGeneralRedisCluster(
   }
 
   const redisConfig = {
-    enableReadyCheck: false,
+    // enableReadyCheck: false,
     // scaleReads: 'all',
     redisOptions: {
       username: username,
@@ -85,11 +87,32 @@ export function createGeneralRedisCluster(
     console.error('[RedisCluster General]', err);
   });
 
+  cluster.on('connect', () => console.log('[RedisCluster] connect'));
+  cluster.on('ready', () => console.log('[RedisCluster] ready'));
+  cluster.on('reconnecting', () => console.log('[RedisCluster] reconnecting'));
+
+  await new Promise<void>((resolve, reject) => {
+    cluster.once('ready', () => {
+      console.log('[RedisCluster General] READY');
+      resolve();
+    });
+
+    cluster.once('error', reject);
+  });
+
+  const keyv = new Keyv({
+    store: new KeyvRedis(cluster as any),
+    ttl: 24 * 60 * 60, // 1 day
+    // namespace: 'nestjs-cache',
+  });
+
   return {
     isGlobal: true,
-    ttl: 24 * 60 * 60, // 1 day
-    store: redisClusterStore(cluster),
+    store: createCache({
+      stores: [keyv],
+    }),
   };
+  */
 }
 
 /**
