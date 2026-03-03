@@ -8,7 +8,7 @@ export default () => ({
     username: process.env.POSTGRES_USERNAME,
     password: process.env.POSTGRES_PASSWORD,
     config: {
-      logging: true,
+      logging: false,
     },
   },
 });

@@ -5,13 +5,47 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 
-import * as redisStore from 'cache-manager-ioredis';
-
 import redisConfig from 'apps/config/redis.config';
-import { createRedisCluster } from 'apps/utils/redis/redis-cluster.provider';
+import {
+  createGeneralRedisCluster,
+  createBullRedisCluster,
+} from 'apps/utils/redis/redis-cluster.provider';
 import postgresConfig from 'apps/configs/postgres.config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Keyword } from '../entities/keyword.entity';
+import { CacheService } from './cache.service';
+import { Cluster } from 'ioredis';
+
+function redisClusterStore(redis: Cluster) {
+  return {
+    isCacheableValue(value: any) {
+      return value !== undefined && value !== null;
+    },
+
+    async get(key: string) {
+      const val = await redis.get(key);
+      return val ? JSON.parse(val) : undefined;
+    },
+
+    async set(key: string, value: any, options?: { ttl?: number }) {
+      const data = JSON.stringify(value);
+
+      if (options?.ttl) {
+        await redis.set(key, data, 'EX', options.ttl);
+      } else {
+        await redis.set(key, data);
+      }
+    },
+
+    async del(key: string) {
+      await redis.del(key);
+    },
+
+    async reset() {
+      await redis.flushdb();
+    },
+  };
+}
 
 @Module({
   imports: [
@@ -22,56 +56,14 @@ import { Keyword } from '../entities/keyword.entity';
     CacheModule.registerAsync({
       isGlobal: true,
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => {
-        const clusterConfig: string =
-          configService.get<string>('redis.clusters.nodes') ?? '';
-        const clusterUsername: string =
-          configService.get<string>('redis.clusters.username') ?? '';
-        const clusterPassword: string =
-          configService.get<string>('redis.clusters.password') ?? '';
-
-        let clusterNodes: any = [];
-        if (clusterConfig.length) {
-          try {
-            clusterNodes = clusterConfig.split(',').map((n) => {
-              const node = n.split(':');
-              return {
-                host: node[0],
-                port: Number(node[1]),
-                username: clusterUsername,
-                password: clusterPassword,
-              };
-            });
-          } catch (err) {
-            console.error('Error parsing redis cluster configuration!', err);
-          }
-        }
-
-        return {
-          store: redisStore,
-          clusterConfig: {
-            nodes: clusterNodes,
-            options: {
-              // enableReadyCheck: false,
-              // scaleReads: 'master',
-              redisOptions: {
-                username: clusterUsername,
-                password: clusterPassword,
-              },
-              username: clusterUsername,
-              password: clusterPassword,
-            },
-          },
-          ttl: 24 * 60 * 60, // 1 day
-          isGlobal: true,
-        };
-      },
+      useFactory: (configService: ConfigService) =>
+        createGeneralRedisCluster(configService) as any,
       inject: [ConfigService],
     }),
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        connection: createRedisCluster(configService) as any,
+        connection: createBullRedisCluster(configService) as any,
       }),
       inject: [ConfigService],
     }),
@@ -97,6 +89,6 @@ import { Keyword } from '../entities/keyword.entity';
     TypeOrmModule.forFeature([Keyword]),
   ],
   controllers: [GatewayController],
-  providers: [GatewayService],
+  providers: [GatewayService, CacheService],
 })
 export class GatewayModule {}
