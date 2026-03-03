@@ -15,15 +15,11 @@ export class CacheService {
     @Inject(CACHE_MANAGER)
     private cacheManager: Cache,
   ) {
-    console.log(this.cacheManager);
-
     const stores = (this.cacheManager as any).stores;
     const redisStore = stores[0];
 
     this.redis =
       redisStore.redis ?? redisStore.client ?? redisStore.getClient?.();
-
-    console.log(this.redis);
   }
 
   private async pushToCache(newData: { id: number; amount: number }) {
@@ -56,7 +52,9 @@ export class CacheService {
   async get() {
     await this.cacheManager.set('{testing}:rifqi', 1);
 
-    console.log('Get function called!');
-    return this.transactions;
+    console.log('Get function called!\n');
+    return {
+      data: this.transactions,
+    };
   }
 }

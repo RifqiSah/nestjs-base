@@ -35,7 +35,7 @@ export function createGeneralRedisCluster(
   const firstNode = nodes.split(',')[0];
   const redisUri = `redis://${username}:${password}@${firstNode}`;
   const keyv = new Keyv({
-    namespace: 'nestjs-cache',
+    namespace: 'sl-cache',
     store: new KeyvRedis(redisUri),
     ttl: 24 * 60 * 60 * 1000,
   });
@@ -160,6 +160,7 @@ export function createBullRedisCluster(
 
   console.error(`[RedisCluster Bull] Config: ${JSON.stringify(redisConfig)}`);
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   const cluster = new Cluster(clusterNodes, redisConfig);
   cluster.on('error', (err) => {
     console.error('[RedisCluster Bull]', err);

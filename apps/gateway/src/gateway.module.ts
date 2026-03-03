@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { GatewayController } from './gateway.controller';
 import { GatewayService } from './gateway.service';
-import { CacheModule } from '@nestjs/cache-manager';
+import { CacheInterceptor, CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 
@@ -15,6 +15,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Keyword } from '../entities/keyword.entity';
 import { CacheService } from './cache.service';
 import { Cluster } from 'ioredis';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 
 function redisClusterStore(redis: Cluster) {
   return {
@@ -89,6 +90,13 @@ function redisClusterStore(redis: Cluster) {
     TypeOrmModule.forFeature([Keyword]),
   ],
   controllers: [GatewayController],
-  providers: [GatewayService, CacheService],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: CacheInterceptor, // Binds the CacheInterceptor globally
+    },
+    GatewayService,
+    CacheService,
+  ],
 })
 export class GatewayModule {}

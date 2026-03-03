@@ -2,6 +2,7 @@ import { Controller, Get, Inject, UseInterceptors } from '@nestjs/common';
 import { GatewayService } from './gateway.service';
 import { CacheService } from './cache.service';
 import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
+import { SlCacheInterceptor } from '../interceptors/cache.interceptor';
 
 @Controller()
 export class GatewayController {
@@ -23,10 +24,9 @@ export class GatewayController {
     return await this.cacheService.add();
   }
 
+  // @UseInterceptors(SlCacheInterceptor)
   @UseInterceptors(CacheInterceptor)
-  // @CacheKey('transaction_list')
-  @CacheKey('{transaction}:list')
-  @CacheTTL(600)
+  @CacheKey('transaction_list')
   @Get('cache-get')
   async cache_get() {
     return await this.cacheService.get();
