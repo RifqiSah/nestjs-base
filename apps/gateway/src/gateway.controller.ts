@@ -26,6 +26,7 @@ export class GatewayController {
 
   // @UseInterceptors(SlCacheInterceptor)
   @UseInterceptors(CacheInterceptor)
+  @CacheTTL(10 * 60 * 60 * 1000)
   @CacheKey('transaction_list')
   @Get('cache-get')
   async cache_get() {

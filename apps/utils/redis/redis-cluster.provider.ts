@@ -2,7 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { Cluster } from 'ioredis';
 
 // new package?
-import KeyvRedis from '@keyv/redis';
+import KeyvRedis, { createCluster } from '@keyv/redis';
 import { Keyv } from 'keyv';
 // import { createCache } from 'cache-manager';
 
@@ -23,96 +23,37 @@ function getClusterConfig(configService: ConfigService) {
   };
 }
 
-export function createGeneralRedisCluster(
-  configService: ConfigService,
-): object | Cluster {
+export function createGeneralRedisCluster(configService: ConfigService) {
   const { nodes, username, password } = getClusterConfig(configService);
-  console.log(
-    `[RedisCluster General] nodes=${nodes}, username=${username}, password=${password}`,
-  );
+  // console.log(
+  //   `[RedisCluster General] nodes=${nodes}, username=${username}, password=${password}`,
+  // );
 
-  // 1 node only
-  const firstNode = nodes.split(',')[0];
-  const redisUri = `redis://${username}:${password}@${firstNode}`;
-  const keyv = new Keyv({
-    namespace: 'sl-cache',
-    store: new KeyvRedis(redisUri),
-    ttl: 24 * 60 * 60 * 1000,
-  });
-
-  console.log(`[RedisCluster General] Config: ${JSON.stringify(keyv)}`);
-
-  return {
-    isGlobal: true,
-    stores: [keyv],
-  };
-
-  /*
-  let clusterNodes: any = [];
-  if (nodes.length) {
-    try {
-      clusterNodes = nodes.split(',').map((n) => {
-        const node = n.split(':');
-        return {
-          host: node[0],
-          port: Number(node[1]),
-          username,
-          password,
-        };
-      });
-    } catch (err) {
-      console.error(
-        '[RedisCluster General] Error parsing redis cluster configuration!',
-      );
-    }
-  }
-
-  const redisConfig = {
-    // enableReadyCheck: false,
-    // scaleReads: 'all',
-    redisOptions: {
+  const cluster = createCluster({
+    rootNodes: nodes.split(',').map((node) => {
+      return {
+        url: `redis://${node}`,
+      };
+    }),
+    defaults: {
       username: username,
       password: password,
     },
-    username: username,
-    password: password,
-  };
-
-  console.error(
-    `[RedisCluster General] Config: ${JSON.stringify(redisConfig)}`,
-  );
-
-  const cluster = new Cluster(clusterNodes, redisConfig);
-  cluster.on('error', (err) => {
-    console.error('[RedisCluster General]', err);
   });
 
-  cluster.on('connect', () => console.log('[RedisCluster] connect'));
-  cluster.on('ready', () => console.log('[RedisCluster] ready'));
-  cluster.on('reconnecting', () => console.log('[RedisCluster] reconnecting'));
-
-  await new Promise<void>((resolve, reject) => {
-    cluster.once('ready', () => {
-      console.log('[RedisCluster General] READY');
-      resolve();
-    });
-
-    cluster.once('error', reject);
+  const keyvRedis = new KeyvRedis(cluster, {});
+  const keyvStore = new Keyv({
+    store: keyvRedis,
+    namespace: '',
+    useKeyPrefix: false,
   });
 
-  const keyv = new Keyv({
-    store: new KeyvRedis(cluster as any),
-    ttl: 24 * 60 * 60, // 1 day
-    // namespace: 'nestjs-cache',
-  });
+  console.log('Keyv1', keyvRedis);
 
   return {
-    isGlobal: true,
-    store: createCache({
-      stores: [keyv],
-    }),
+    stores: [keyvStore],
+    ttl: 24 * 60 * 60 * 1000,
   };
-  */
 }
 
 /**
@@ -124,9 +65,9 @@ export function createBullRedisCluster(
   configService: ConfigService,
 ): Cluster | object {
   const { nodes, username, password } = getClusterConfig(configService);
-  console.log(
-    `[RedisCluster Bull] nodes=${nodes}, username=${username}, password=${password}`,
-  );
+  // console.log(
+  //   `[RedisCluster Bull] nodes=${nodes}, username=${username}, password=${password}`,
+  // );
 
   let clusterNodes: any = [];
   if (nodes.length) {
@@ -158,7 +99,7 @@ export function createBullRedisCluster(
     password: password,
   };
 
-  console.error(`[RedisCluster Bull] Config: ${JSON.stringify(redisConfig)}`);
+  // console.log(`[RedisCluster Bull] Config: ${JSON.stringify(redisConfig)}`);
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   const cluster = new Cluster(clusterNodes, redisConfig);
