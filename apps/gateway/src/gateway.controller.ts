@@ -1,12 +1,15 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Post, Inject } from '@nestjs/common';
 import { GatewayService } from './gateway.service';
 
 @Controller()
 export class GatewayController {
-  constructor(private readonly gatewayService: GatewayService) {}
+  constructor(
+    @Inject(GatewayService)
+    private readonly gatewayService: GatewayService,
+  ) {}
 
-  @Get()
-  getHello(): string {
-    return this.gatewayService.getHello();
+  @Post('redeem')
+  redeem() {
+    return this.gatewayService.redeem();
   }
 }
