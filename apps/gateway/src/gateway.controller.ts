@@ -1,5 +1,6 @@
 import { Controller, Post, Inject } from '@nestjs/common';
 import { GatewayService } from './gateway.service';
+import { SigNozTrace } from 'apps/dynamic_modules/signoz/decorator';
 
 @Controller()
 export class GatewayController {
@@ -9,6 +10,7 @@ export class GatewayController {
   ) {}
 
   @Post('redeem')
+  @SigNozTrace()
   redeem() {
     return this.gatewayService.redeem();
   }
