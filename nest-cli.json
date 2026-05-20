@@ -18,6 +18,15 @@
       "compilerOptions": {
         "tsConfigPath": "apps/gateway/tsconfig.app.json"
       }
+    },
+    "redeem_consumer": {
+      "type": "application",
+      "root": "apps/redeem_consumer",
+      "entryFile": "main",
+      "sourceRoot": "apps/redeem_consumer/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/redeem_consumer/tsconfig.app.json"
+      }
     }
   }
 }

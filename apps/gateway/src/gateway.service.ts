@@ -1,12 +1,21 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { ClientKafka } from '@nestjs/microservices';
 import { SigNozTrace } from 'apps/dynamic_modules/signoz/decorator';
 
 @Injectable()
 export class GatewayService {
-  constructor() {}
+  constructor(
+    @Inject('REDEEM_SERVICE')
+    private readonly kafkaRedeem: ClientKafka,
+  ) {}
 
   @SigNozTrace()
-  redeem() {
-    return 'Jos!';
+  redeem(body: any) {
+    this.kafkaRedeem.emit('redeem.created', body);
+
+    return {
+      message: 'Redeem event published to Kafka',
+      data: body,
+    };
   }
 }
