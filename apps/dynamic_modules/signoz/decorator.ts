@@ -4,6 +4,7 @@ import {
   context,
   propagation,
 } from '@opentelemetry/api';
+import { KafkaContext } from '@nestjs/microservices';
 
 export function SigNozTrace(spanName?: string) {
   return function (
@@ -62,10 +63,30 @@ export function KafkaConsumerSigNozTrace(spanName?: string) {
     const originalMethod = descriptor.value;
 
     descriptor.value = async function (...args: any[]) {
-      const message = args[0];
-      const headers = message?.headers || {};
+      // NestJS Kafka
+      const payload = args[0];
 
-      // extract trace context
+      // raw kafka message
+      const kafkaContext: KafkaContext = args[1];
+      const kafkaMessage = kafkaContext.getMessage();
+
+      // kafka metadata
+      const kafkaTopic = kafkaContext.getTopic();
+      const kafkaPartition = kafkaContext.getPartition();
+      const kafkaOffset = kafkaMessage.offset;
+
+      // kafka headers
+      const rawHeaders = kafkaMessage.headers || {};
+
+      // if header is buffer, convert to string
+      const headers = Object.fromEntries(
+        Object.entries(rawHeaders).map(([key, value]) => [
+          key,
+          Buffer.isBuffer(value) ? value.toString() : value,
+        ]),
+      );
+
+      // extract parent trace context
       const extractedContext = propagation.extract(context.active(), headers);
       const tracer = trace.getTracer(target.constructor.name);
 
@@ -73,57 +94,48 @@ export function KafkaConsumerSigNozTrace(spanName?: string) {
         spanName || `${target.constructor.name}.${propertyKey}`;
 
       return context.with(extractedContext, async () => {
-        return tracer.startActiveSpan(
-          finalSpanName,
+        return tracer.startActiveSpan(finalSpanName, async (span) => {
+          try {
+            const transactionId = payload?.transaction_id;
 
-          async (span) => {
-            try {
-              // auto tags for kafka consumer
-              const transactionId = message?.transaction_id;
+            // auto tags
+            span.setAttributes({
+              // transaction metadata
+              transaction_id: transactionId,
 
-              // for kafka metadata
-              const kafkaTopic = message?.topic || headers?.topic || 'unknown';
-              const kafkaPartition = message?.partition;
-              const kafkaOffset = message?.offset;
+              // kafka metadata
+              'messaging.system': 'kafka',
+              'messaging.destination.name': kafkaTopic,
+              'messaging.destination_kind': 'topic',
+              'messaging.operation': 'process',
+              'messaging.kafka.partition': kafkaPartition,
+              'messaging.kafka.offset': kafkaOffset,
 
-              span.setAttributes({
-                // transaction metadata
-                transaction_id: transactionId,
+              // app metadata
+              'app.consumer': target.constructor.name,
+              'app.handler': propertyKey,
+            });
 
-                // kafka metadata
-                'messaging.system': 'kafka',
-                'messaging.destination': kafkaTopic,
-                'messaging.destination_kind': 'topic',
-                'messaging.operation': 'process',
-                'messaging.kafka.partition': kafkaPartition,
-                'messaging.kafka.offset': kafkaOffset,
+            const result = await originalMethod.apply(this, args);
 
-                // app metadata
-                'app.consumer': target.constructor.name,
-                'app.handler': propertyKey,
-              });
+            span.setStatus({
+              code: SpanStatusCode.OK,
+            });
 
-              const result = await originalMethod.apply(this, args);
+            return result;
+          } catch (error: any) {
+            span.recordException(error);
 
-              span.setStatus({
-                code: SpanStatusCode.OK,
-              });
+            span.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: error.message,
+            });
 
-              return result;
-            } catch (error: any) {
-              span.recordException(error);
-
-              span.setStatus({
-                code: SpanStatusCode.ERROR,
-                message: error.message,
-              });
-
-              throw error;
-            } finally {
-              span.end();
-            }
-          },
-        );
+            throw error;
+          } finally {
+            span.end();
+          }
+        });
       });
     };
 

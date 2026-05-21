@@ -17,16 +17,32 @@ export class GatewayService {
 
     // set trx_id to span attributes
     const span = trace.getActiveSpan();
-    span?.setAttributes({ transaction_id: trx_id });
+    // span?.setAttributes({ transaction_id: trx_id });
+    span?.setAttributes({
+      transaction_id: trx_id,
+      'messaging.system': 'kafka',
+      'messaging.operation': 'publish',
+      'messaging.destination': 'redeem.created', // topic name
+    });
 
     // inject trace context
     const headers = {};
     propagation.inject(context.active(), headers);
+    headers['transaction_id'] = trx_id;
 
     // normal emit
+    // this.kafkaRedeem.emit('redeem.created', {
+    //   ...body,
+    //   transaction_id: trx_id,
+    // });
+
+    // emit with sync trace_id
     this.kafkaRedeem.emit('redeem.created', {
-      ...body,
-      transaction_id: trx_id,
+      value: {
+        ...body,
+        transaction_id: trx_id,
+      },
+      headers,
     });
 
     return {

@@ -1,5 +1,10 @@
 import { Controller } from '@nestjs/common';
-import { EventPattern, Payload } from '@nestjs/microservices';
+import {
+  Ctx,
+  EventPattern,
+  KafkaContext,
+  Payload,
+} from '@nestjs/microservices';
 import { KafkaConsumerSigNozTrace } from 'apps/dynamic_modules/signoz/decorator';
 
 @Controller()
@@ -10,7 +15,11 @@ export class RedeemConsumerController {
 
   @EventPattern('redeem.created')
   @KafkaConsumerSigNozTrace()
-  async handleRedeemCreated(@Payload() message: any) {
+  async handleRedeemCreated(
+    @Payload() message: any,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    @Ctx() ctx: KafkaContext,
+  ) {
     console.log('Incoming Kafka Message');
 
     // simulasi proses redeem
