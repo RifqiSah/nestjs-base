@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { EventPattern, Payload } from '@nestjs/microservices';
-import { SigNozTrace } from 'apps/dynamic_modules/signoz/decorator';
+import { KafkaConsumerSigNozTrace } from 'apps/dynamic_modules/signoz/decorator';
 
 @Controller()
 export class RedeemConsumerController {
@@ -9,7 +9,7 @@ export class RedeemConsumerController {
   }
 
   @EventPattern('redeem.created')
-  @SigNozTrace()
+  @KafkaConsumerSigNozTrace()
   async handleRedeemCreated(@Payload() message: any) {
     console.log('Incoming Kafka Message');
 
