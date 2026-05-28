@@ -60,4 +60,18 @@ export class CacheService {
       data: this.transactions,
     };
   }
+
+  public async getRecord(key: string): Promise<any> {
+    const value = await this.cacheManager.get(key);
+
+    return value;
+  }
+
+  public async setRecord(key: string, value: any, ttl?: number) {
+    if (ttl !== undefined) {
+      await this.cacheManager.set(key, value, ttl);
+    } else {
+      await this.cacheManager.set(key, value);
+    }
+  }
 }
