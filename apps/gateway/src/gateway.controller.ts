@@ -24,9 +24,9 @@ export class GatewayController {
     return await this.cacheService.add();
   }
 
-  // @UseInterceptors(SlCacheInterceptor)
-  @UseInterceptors(CacheInterceptor)
-  @CacheTTL(10 * 60 * 60 * 1000)
+  @UseInterceptors(SlCacheInterceptor)
+  // @UseInterceptors(CacheInterceptor)
+  @CacheTTL(1000 * 60 * 60 * 1)
   @CacheKey('transaction_list')
   @Get('cache-get')
   async cache_get() {

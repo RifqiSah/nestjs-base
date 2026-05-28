@@ -26,26 +26,20 @@ export class SlCacheInterceptor {
     context: ExecutionContext,
     next: CallHandler,
   ): Promise<Observable<any>> {
-    console.log('Interceptor', this.cacheManager);
-    await this.cacheManager.set('haloo', 1, 6000);
+    // console.log('Interceptor', this.cacheManager);
+    // await this.cacheManager.set('haloo', 1, 6000);
 
     const handler = context.getHandler();
     const request = context.switchToHttp().getRequest();
 
-    // 1️⃣ Ambil cache key dari @CacheKey decorator
     let key = this.reflector.get<string>(CACHE_KEY_METADATA, handler);
-
-    // fallback key otomatis jika tidak ada decorator
     if (!key) {
       key = `${request.method}:${request.originalUrl}`;
     }
 
-    // 2️⃣ Ambil TTL dari @CacheTTL decorator (detik)
     const ttl = this.reflector.get<number>(CACHE_TTL_METADATA, handler);
-
     console.log('[SlCacheInterceptor] CACHE KEY =>', key);
 
-    // 3️⃣ Check cache dulu
     const cached = await this.cacheManager.get(key);
     if (cached) {
       console.log('[SlCacheInterceptor] CACHE HIT');
@@ -53,8 +47,6 @@ export class SlCacheInterceptor {
     }
 
     console.log('[SlCacheInterceptor] CACHE MISS');
-
-    // 4️⃣ Jika cache miss, jalankan handler & simpan hasil ke cache
     return next.handle().pipe(
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
       tap(async (response) => {
